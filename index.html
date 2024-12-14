@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Jianan Cai</title>
+    <style>
+        body {font-family: 'Calibri';}
+
+        div.desc {
+        padding: 15px;
+        text-align: center;
+        font-family:verdana;
+        }
+
+        .container {
+        padding: 5px;
+        justify-content: center;
+        }
+
+        .responsive {
+        padding: 0 0px;
+        float: left;
+        width: 20%; 
+        display:flex;
+        }
+        
+        .image-wrapper {
+        width: 500px;
+        height: 300px;
+        overflow: hidden;
+        margin: 0 auto;
+        }
+
+        .image-wrapper_2 {
+        width: 300px;
+        height: 350px;
+        overflow: hidden;
+        margin: 0 auto;
+        }
+
+        .image-wrapper_2 img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+        }
+
+        .image-wrapper img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+        }
+
+        .image-caption {
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <div>
+        <h1>CS180 Final Prject</h1>
+    </div>
+
+
+    <h2>Light Field Camera</h2>
+
+    <h3>
+        Depth Refocusing
+    </h3>
+
+    <p>The differences in shift between closer and farther objects allow for advanced effects like depth refocusing and aperture adjustments. These effects are achieved using simple image manipulations, such as shifting and averaging. The necessary shift values can be computed using information embedded in each filename. Each filename follows a format like <code>out_y_x_v_u_.png</code>, where <code>(x, y)</code> corresponds to the image's grid position in the 17x17 grid, and <code>(u, v)</code> represents the physical camera coordinates used during capture. To create images refocused at different depths, the following steps are applied:</p>
+
+    <p>1. Normalize all camera coordinates to a scale between 0.0 and 1.0.</p>
+    <p>2. Identify the central image of the grid (e.g., located at position 8x8) and retrieve its camera coordinates <code>(u', v')</code>.</p>
+    <p>3. For every image in the grid, calculate the relative shift <code>(du, dv)</code> by subtracting its camera coordinates <code>(u, v)</code> from the central image's coordinates <code>(u', v')</code>.</p>
+    <p>4. Define a hyperparameter <code>α</code> to scale the shift, ensuring that when each image is translated by <code>(α * du, α * dv)</code>, all images align within the local neighborhood around a specific position <code>(ix, iy)</code>.</p>
+    <p>5. Apply the calculated shifts to all images and average them to create the final refocused image.</p>
+
+    <div class="container">
+        
+        <div class="responsive">
+            <div>
+                <div class="image-wrapper">
+                    <img src="refocus_iamges/refocus.gif" alt="cameraman">
+                </div>
+                <div class="image-caption">
+                    C = 0 to 1 with step size 0.1 for the chessboard.
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
+
+
+    <div class="container" style="clear: both;">
+        <h3>
+            Aperture Adjustment
+        </h3>
+
+        <p>In this implementation of the aperture adjustment, the function selects images from the 17<code>x</code>17 light field grid based on the specified aperture radius. 
+            The selection is centered around the middle image at position based on the aperture_radius, selecting indices within a square region around the center. 
+            The selected indices are flattened and used to retrieve the corresponding images from the images array. These selected images are averaged pixel-by-pixel to 
+            produce the final output image, simulating the effect of a controlled aperture. Smaller radii narrow the focus by including fewer images, while larger radii create a broader 
+            depth of field by including more images. This implementation effectively adjusts the depth of focus, producing results similar to real-life aperture changes in photography.</p>
+        
+        <div class="responsive">
+            <div>
+                <div class="image-wrapper">
+                    <img src="aperture_images/aperture.gif" alt="cameraman">
+                    
+                </div>
+                <div class="image-caption">
+                    C = 1.
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    
+
+    <div class="container" style="clear: both;">
+        <h2>Gradient Domain Fusion</h2>
+        <h3>Toy Problem</h3>
+        <p>
+            To solve this toy problem, we aim to reconstruct an image <i>v(x, y)</i> using the gradient values of a source image <i>s(x, y)</i> and a single fixed intensity constraint. The objective is to minimize the differences between the gradients of <i>v</i> and <i>s</i> in both the horizontal (<i>x</i>) and vertical (<i>y</i>) directions, ensuring that <i>v</i> matches <i>s</i> in terms of local changes. Additionally, we fix the top-left corner of <i>v</i> to <i>s(0, 0)</i> to resolve any ambiguity caused by adding a constant offset.
+        </p>
+        <p>
+            The solution involves setting up these constraints as a system of linear equations <i>Av = b</i>, where <i>A</i> is a sparse matrix encoding the relationships between neighboring pixels, and <i>b</i> represents the gradient differences and fixed pixel intensity. Using the least squares solver, we obtain the values for <i>v</i>, which represent the reconstructed image. This approach ensures that the reconstructed image preserves the gradient structure of the source while adhering to the fixed intensity constraint.
+        </p>
+        <div class="responsive">
+            <div>
+                <div class="image-wrapper_2">
+                    <img src="GDF_images/toy.png" alt="cameraman">
+                </div>
+            </div>
+        </div>
+        
+
+    </div>
+
+
+    <div class="container" style="clear: both;">
+        <h3>Poisson Blending</h3>
+        <p>
+            In Poisson blending, the main goal is to seamlessly integrate a source image into a target background by focusing on the pixels inside a mask region. The process starts by cropping the source image and defining a mask that specifies the area where the blending will occur in the target image. Since interactive tools for selecting regions might not always be available, coordinates for the mask can be manually determined to match the desired position in the target image. This step ensures the source and target images align correctly for blending.
+            </p>
+            
+            <p>
+            The blending itself involves solving constraints that aim to minimize differences in gradients between the source and blended images while preserving the target’s boundary information. For every pixel in the mask, two conditions are considered:
+            </p>
+            
+            <ol>
+                <li>
+                    For each neighbor pixel within the mask, the difference in intensities between the current pixel and its neighbor in the blended image should match the gradient of the source image. This ensures that the source image's internal gradient structure is preserved.
+                </li>
+                <li>
+                    For neighbors outside the mask (on the boundary), the blending adjusts the intensities to smoothly transition from the source image to the target image, using the target's pixel values to guide the boundary condition.
+                </li>
+            </ol>
+            
+    
+        <div class="responsive">
+            <div>
+                <div class="image-wrapper_2">
+                    <img src="GDF_images/p1.png" alt="cameraman">
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="container" style="clear: both;">
+        <div class="responsive">
+            <div>
+                <div class="image-wrapper_2">
+                    <img src="GDF_images/p2.png" alt="cameraman">
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="container" style="clear: both;">
+        <div class="responsive">
+            <div>
+                <div class="image-wrapper_2">
+                    <img src="GDF_images/p3.png" alt="cameraman">
+                </div>
+            </div>
+        </div>
+
+    </div>
+    
+
+    <div class="container" style="clear: both;">
+        <p style="clear: both;">The below are the results:</p>
+        <div class="responsive">
+            <div>
+                <div class="image-wrapper_2">
+                    <img src="GDF_images/r1.png" alt="cameraman">
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="container" style="clear: both;">
+        <div class="responsive">
+            <div>
+                <div class="image-wrapper_2">
+                    <img src="GDF_images/r2.png" alt="cameraman">
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="container" style="clear: both;">
+        <div class="responsive">
+            <div>
+                <div class="image-wrapper_2">
+                    <img src="GDF_images/r3.png" alt="cameraman">
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
+    <div class="container" style="clear: both;">
+        <h3>Mixed Gradients(Bells & Whistles)</h3>
+        <p>
+            For this implementation, we extend the standard Poisson blending approach by incorporating mixed gradients. Mixed gradients work by evaluating the gradients from both the source and the target images at each pixel. Instead of always using the source gradient, the blending process selects the gradient with the larger absolute magnitude between the source and target gradients. This allows the blended result to adaptively capture significant changes in either the source or the target, resulting in more seamless integration in cases where there are large intensity differences or mismatched gradients, such as logos with distinct edges or white borders.
+            </p>
+            
+            <p>
+            The process starts by mapping each pixel in the mask to a unique variable index, setting up a sparse matrix <code>A</code> and a vector <code>b</code> to represent the blending constraints. For each pixel in the mask, the system enforces two constraints:
+            </p>
+            
+            <ol>
+                <li>
+                    If the neighbor pixel is also within the mask, the equation ensures that the difference in pixel intensities (gradient) matches the chosen mixed gradient.
+                </li>
+                <li>
+                    If the neighbor is outside the mask, the equation incorporates the boundary intensity from the target image to ensure a smooth transition.
+                </li>
+            </ol>
+            
+            <p>
+            Once all constraints are encoded, the system of linear equations <i>Av = b</i> is solved using a sparse least-squares solver. The resulting values are mapped back to reconstruct the blended image, ensuring that both the source and target gradients are respected. This method significantly improves blending quality in challenging cases, reducing visible seams and ensuring a more natural integration of objects into the target image.
+            </p>
+            
+        <div class="responsive">
+            <div>
+                <div class="image-wrapper_2">
+                    <img src="GDF_images/mixed.png" alt="cameraman">
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
+
+</body>
